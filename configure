@@ -755,6 +755,19 @@ for opt do
   esac
 done
 
+if has_meson_option "-Dbsim=enabled"; then
+  if test -z "$BSIM_COMPONENTS_PATH"; then
+    error_exit "--enable-bsim requires BSIM_COMPONENTS_PATH"
+  fi
+
+  if test -z "$BSIM_OUT_PATH"; then
+    error_exit "--enable-bsim requires BSIM_OUT_PATH"
+  fi
+
+  meson_option_add "-Dbsim_components_path=$BSIM_COMPONENTS_PATH"
+  meson_option_add "-Dbsim_lib_path=$BSIM_OUT_PATH/lib"
+fi
+
 if ! test -e "$source_path/.git"
 then
     git_submodules_action="validate"

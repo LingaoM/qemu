@@ -2267,6 +2267,28 @@ if not get_option('libdw').auto() or \
                        required: get_option('libdw'))
 endif
 
+# BabbleSim discrete time support
+bsim = not_found
+if get_option('bsim').enabled()
+  bsim_components_path = get_option('bsim_components_path')
+  bsim_lib_path = get_option('bsim_lib_path')
+  if bsim_components_path == '' or bsim_lib_path == ''
+    error('BabbleSim support requires bsim_components_path and bsim_lib_path')
+  endif
+
+  bsim_phycom = cc.find_library('PhyComv1', dirs: bsim_lib_path,
+                                static: true, required: true)
+  bsim_util = cc.find_library('Utilv1', dirs: bsim_lib_path,
+                              static: true, required: true)
+  bsim = declare_dependency(
+    include_directories: [
+      include_directories(bsim_components_path / 'libPhyComv1' / 'src'),
+      include_directories(bsim_components_path / 'libUtilv1' / 'src'),
+    ],
+    dependencies: [bsim_phycom, bsim_util],
+  )
+endif
+
 #################
 # config-host.h #
 #################
@@ -2275,6 +2297,7 @@ config_host_data = configuration_data()
 
 config_host_data.set('CONFIG_HMP', have_hmp)
 config_host_data.set('CONFIG_HAVE_RUST', have_rust)
+config_host_data.set('CONFIG_BSIM', bsim.found())
 audio_drivers_selected = []
 if have_system
   audio_drivers_available = {

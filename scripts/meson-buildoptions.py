@@ -28,6 +28,8 @@ import sys
 # Options with nonstandard names (e.g. --with/--without) or OS-dependent
 # defaults.  Try not to add any.
 SKIP_OPTIONS = {
+    "bsim_components_path",
+    "bsim_lib_path",
     "default_devices",
     "fuzzing_engine",
 }

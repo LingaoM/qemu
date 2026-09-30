@@ -451,6 +451,18 @@ static QemuOptsList qemu_icount_opts = {
             .name = "sleep",
             .type = QEMU_OPT_BOOL,
         }, {
+            .name = "bsim-sid",
+            .type = QEMU_OPT_STRING,
+        }, {
+            .name = "bsim-phy",
+            .type = QEMU_OPT_STRING,
+        }, {
+            .name = "bsim-dev",
+            .type = QEMU_OPT_NUMBER,
+        }, {
+            .name = "bsim-mro",
+            .type = QEMU_OPT_NUMBER,
+        }, {
             .name = "rr",
             .type = QEMU_OPT_STRING,
         }, {
