@@ -5331,13 +5331,13 @@ SRST
 ERST
 
 DEF("icount", HAS_ARG, QEMU_OPTION_icount, \
-    "-icount [shift=N|auto][,align=on|off][,sleep=on|off][,rr=record|replay,rrfile=<filename>[,rrsnapshot=<snapshot>]]\n" \
+    "-icount [shift=N|auto][,align=on|off][,sleep=on|off][,bsim-sid=<id>,bsim-dev=<n>[,bsim-phy=<id>,bsim-mro=<us>]][,rr=record|replay,rrfile=<filename>[,rrsnapshot=<snapshot>]]\n" \
     "                enable virtual instruction counter with 2^N clock ticks per\n" \
     "                instruction, enable aligning the host and virtual clocks\n" \
     "                or disable real time cpu sleeping, and optionally enable\n" \
     "                record-and-replay mode\n", QEMU_ARCH_ALL)
 SRST
-``-icount [shift=N|auto][,align=on|off][,sleep=on|off][,rr=record|replay,rrfile=filename[,rrsnapshot=snapshot]]``
+``-icount [shift=N|auto][,align=on|off][,sleep=on|off][,bsim-sid=id,bsim-dev=n[,bsim-phy=id,bsim-mro=us]][,rr=record|replay,rrfile=filename[,rrsnapshot=snapshot]]``
     Enable virtual instruction counter. The virtual cpu will execute one
     instruction every 2^N ns of virtual time. If ``auto`` is specified
     then the virtual cpu speed will be automatically adjusted to keep
@@ -5370,6 +5370,12 @@ SRST
     Typically this happens when the shift value is high (how high
     depends on the host machine). The default if icount is enabled
     is ``align=off``.
+
+    When QEMU is built with BabbleSim support, ``bsim-sid`` and
+    ``bsim-dev`` connect the TCG virtual clock to a BabbleSim PHY.
+    ``bsim-phy`` defaults to ``2G4`` and ``bsim-mro`` limits each time
+    step in microseconds, defaulting to 1000. This mode uses a fixed shift
+    of zero when omitted and requires ``sleep=off`` and ``align=off``.
 
     When the ``rr`` option is specified deterministic record/replay is
     enabled. The ``rrfile=`` option must also be provided to

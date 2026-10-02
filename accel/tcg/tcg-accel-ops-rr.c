@@ -25,6 +25,7 @@
 
 #include "qemu/osdep.h"
 #include "qemu/lockable.h"
+#include "system/execution-order.h"
 #include "system/tcg.h"
 #include "system/replay.h"
 #include "exec/icount.h"
@@ -37,6 +38,7 @@
 #include "tcg-accel-ops.h"
 #include "tcg-accel-ops-rr.h"
 #include "tcg-accel-ops-icount.h"
+#include "icount-bsim.h"
 
 /* Kick all RR vCPUs */
 void rr_kick_vcpu_thread(CPUState *unused)
@@ -110,7 +112,10 @@ static void rr_wait_io_event(void)
 {
     CPUState *cpu;
 
-    while (all_cpu_threads_idle()) {
+    while (all_cpu_threads_idle() || icount_bsim_waiting()) {
+        if (execution_order_locked()) {
+            replay_mutex_unlock();
+        }
         rr_stop_kick_timer();
         qemu_cond_wait_bql(first_cpu->halt_cond);
     }
@@ -215,6 +220,7 @@ static void *rr_cpu_thread_fn(void *arg)
     while (1) {
         /* Only used for icount_enabled() */
         int64_t cpu_budget = 0;
+        bool execution_order_held;
 
         if (cpu) {
             /*
@@ -236,9 +242,12 @@ static void *rr_cpu_thread_fn(void *arg)
         rr_wait_io_event();
         rr_deal_with_unplugged_cpus();
 
-        bql_unlock();
-        replay_mutex_lock();
-        bql_lock();
+        execution_order_held = execution_order_locked();
+        if (!execution_order_held) {
+            bql_unlock();
+            replay_mutex_lock();
+            bql_lock();
+        }
 
         if (icount_enabled()) {
             int cpu_count = rr_cpu_count();
@@ -254,7 +263,9 @@ static void *rr_cpu_thread_fn(void *arg)
             cpu_budget = icount_percpu_budget(cpu_count);
         }
 
-        replay_mutex_unlock();
+        if (!execution_order_held) {
+            replay_mutex_unlock();
+        }
 
         if (!cpu) {
             cpu = first_cpu;
@@ -288,6 +299,10 @@ static void *rr_cpu_thread_fn(void *arg)
                     icount_process_data(cpu);
                 }
                 bql_lock();
+
+                if (execution_order_locked() && excp != EXCP_INTERRUPT) {
+                    replay_mutex_unlock();
+                }
 
                 if (excp == EXCP_DEBUG) {
                     cpu_handle_guest_debug(cpu);

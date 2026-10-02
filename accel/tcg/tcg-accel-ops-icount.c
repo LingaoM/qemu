@@ -25,6 +25,7 @@
 
 #include "qemu/osdep.h"
 #include "system/replay.h"
+#include "system/execution-order.h"
 #include "exec/icount.h"
 #include "qemu/main-loop.h"
 #include "qemu/guest-random.h"
@@ -33,6 +34,7 @@
 #include "tcg-accel-ops.h"
 #include "tcg-accel-ops-icount.h"
 #include "tcg-accel-ops-rr.h"
+#include "icount-bsim.h"
 
 static int64_t icount_get_limit(void)
 {
@@ -45,6 +47,9 @@ static int64_t icount_get_limit(void)
          */
         deadline = qemu_clock_deadline_ns_all(QEMU_CLOCK_VIRTUAL,
                                               QEMU_TIMER_ATTR_ALL);
+        if (icount_bsim_enabled()) {
+            return icount_round(icount_bsim_limit_ns(deadline));
+        }
         /* Check realtime timers, because they help with input processing */
         deadline = qemu_soonest_timeout(deadline,
                 qemu_clock_deadline_ns_all(QEMU_CLOCK_REALTIME,
@@ -114,7 +119,9 @@ void icount_prepare_for_run(CPUState *cpu, int64_t cpu_budget)
     g_assert(cpu->neg.icount_decr.u16.low == 0);
     g_assert(cpu->icount_extra == 0);
 
-    replay_mutex_lock();
+    if (!execution_order_locked()) {
+        replay_mutex_lock();
+    }
 
     cpu->icount_budget = MIN(icount_get_limit(), cpu_budget);
     insns_left = MIN(0xffff, cpu->icount_budget);
@@ -134,8 +141,13 @@ void icount_prepare_for_run(CPUState *cpu, int64_t cpu_budget)
 
 void icount_process_data(CPUState *cpu)
 {
+    bool continue_slice = false;
+
     /* Account for executed instructions */
     icount_update(cpu);
+    if (icount_bsim_enabled()) {
+        continue_slice = icount_bsim_account_cpu();
+    }
 
     /* Reset the counters */
     cpu->neg.icount_decr.u16.low = 0;
@@ -144,7 +156,9 @@ void icount_process_data(CPUState *cpu)
 
     replay_account_executed_instructions();
 
-    replay_mutex_unlock();
+    if (!continue_slice) {
+        replay_mutex_unlock();
+    }
 }
 
 void icount_handle_interrupt(CPUState *cpu, int mask)

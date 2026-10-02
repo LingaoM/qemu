@@ -38,6 +38,8 @@
 #include "exec/icount.h"
 #include "system/cpu-timers-internal.h"
 
+#include "icount-bsim.h"
+
 /*
  * ICOUNT: Instruction Counter
  *
@@ -123,6 +125,10 @@ static int64_t icount_get_raw_locked(void)
 static int64_t icount_get_locked(void)
 {
     int64_t icount = icount_get_raw_locked();
+
+    if (icount_bsim_enabled()) {
+        return qatomic_read(&timers_state.qemu_icount_bias);
+    }
     return qatomic_read(&timers_state.qemu_icount_bias) + icount_to_ns(icount);
 }
 
@@ -304,6 +310,11 @@ void icount_start_warp_timer(void)
         return;
     }
 
+    if (icount_bsim_enabled()) {
+        icount_bsim_start_idle_wait();
+        return;
+    }
+
     if (replay_mode != REPLAY_MODE_PLAY) {
         if (!all_cpu_threads_idle()) {
             return;
@@ -417,10 +428,21 @@ void icount_account_warp_timer(void)
 
 bool icount_configure(QemuOpts *opts, Error **errp)
 {
-    const char *option = qemu_opt_get(opts, "shift");
-    bool sleep = qemu_opt_get_bool(opts, "sleep", true);
+    const char *option;
+    bool bsim = qemu_opt_get(opts, "bsim-sid") != NULL;
+    bool sleep;
     bool align = qemu_opt_get_bool(opts, "align", false);
     long time_shift = -1;
+
+    option = qemu_opt_get(opts, "shift");
+    sleep = qemu_opt_get_bool(opts, "sleep", !bsim);
+    if (bsim) {
+        option = option ?: "0";
+        if (sleep) {
+            error_setg(errp, "BabbleSim requires sleep=off");
+            return false;
+        }
+    }
 
     if (!option) {
         if (qemu_opt_get(opts, "align") != NULL) {
@@ -446,6 +468,10 @@ bool icount_configure(QemuOpts *opts, Error **errp)
         return false;
     } else if (!icount_sleep) {
         error_setg(errp, "shift=auto and sleep=off are incompatible");
+        return false;
+    }
+
+    if (!icount_bsim_configure(opts, errp)) {
         return false;
     }
 

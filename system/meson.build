@@ -10,6 +10,7 @@ system_ss.add(files(
   'cpu-timers.c',
   'dirtylimit.c',
   'dma-helpers.c',
+  'execution-order.c',
   'exit-with-parent.c',
   'globals.c',
   'ioport.c',

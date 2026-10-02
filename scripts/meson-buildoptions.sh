@@ -10,6 +10,9 @@ meson_options_help() {
   printf "%s\n" '  --block-drv-rw-whitelist=VALUE'
   printf "%s\n" '                           set block driver read-write whitelist (by default'
   printf "%s\n" '                           affects only QEMU, not tools like qemu-img)'
+  printf "%s\n" '  --bsim-components-path=VALUE'
+  printf "%s\n" '                           BabbleSim components directory'
+  printf "%s\n" '  --bsim-out-path=VALUE    BabbleSim build output directory'
   printf "%s\n" '  --container-command=VALUE'
   printf "%s\n" '                           command to build/run containers'
   printf "%s\n" '  --container-registry=VALUE'
@@ -107,6 +110,7 @@ meson_options_help() {
   printf "%s\n" '  bochs           bochs image format support'
   printf "%s\n" '  bpf             eBPF support'
   printf "%s\n" '  brlapi          brlapi character device driver'
+  printf "%s\n" '  bsim            BabbleSim synchronization for TCG icount'
   printf "%s\n" '  bzip2           bzip2 support for DMG images'
   printf "%s\n" '  canokey         CanoKey support'
   printf "%s\n" '  cap-ng          cap_ng support'
@@ -270,6 +274,10 @@ _meson_option_parse() {
     --disable-bpf) printf "%s" -Dbpf=disabled ;;
     --enable-brlapi) printf "%s" -Dbrlapi=enabled ;;
     --disable-brlapi) printf "%s" -Dbrlapi=disabled ;;
+    --enable-bsim) printf "%s" -Dbsim=enabled ;;
+    --disable-bsim) printf "%s" -Dbsim=disabled ;;
+    --bsim-components-path=*) quote_sh "-Dbsim_components_path=$2" ;;
+    --bsim-out-path=*) quote_sh "-Dbsim_out_path=$2" ;;
     --enable-bzip2) printf "%s" -Dbzip2=enabled ;;
     --disable-bzip2) printf "%s" -Dbzip2=disabled ;;
     --enable-canokey) printf "%s" -Dcanokey=enabled ;;

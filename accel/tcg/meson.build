@@ -37,3 +37,4 @@ system_ss.add(files(
   'tcg-accel-ops-rr.c',
   'watchpoint.c',
 ))
+system_ss.add(when: bsim, if_true: files('icount-bsim.c'))

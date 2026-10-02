@@ -65,6 +65,12 @@ option('guest_agent_msi', type : 'feature', value : 'auto',
        description: 'Build MSI package for the QEMU Guest Agent')
 option('tools', type : 'feature', value : 'auto',
        description: 'build support utilities that come with QEMU')
+option('bsim', type : 'feature', value : 'disabled',
+       description: 'BabbleSim synchronization for TCG icount')
+option('bsim_components_path', type : 'string', value : '',
+       description: 'BabbleSim components directory')
+option('bsim_out_path', type : 'string', value : '',
+       description: 'BabbleSim build output directory')
 option('qga_vss', type : 'feature', value: 'auto',
        description: 'build QGA VSS support (broken with MinGW)')
 

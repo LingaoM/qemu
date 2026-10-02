@@ -15,17 +15,8 @@
 #include "replay-internal.h"
 #include "qemu/error-report.h"
 #include "qemu/main-loop.h"
+#include "system/execution-order.h"
 #include "trace.h"
-
-/* Mutex to protect reading and writing events to the log.
-   data_kind and has_unread_data are also protected
-   by this mutex.
-   It also protects replay events queue which stores events to be
-   written or read to the log. */
-static QemuMutex lock;
-/* Condition and queue for fair ordering of mutex lock requests. */
-static QemuCond mutex_cond;
-static unsigned long mutex_head, mutex_tail;
 
 /* File for replay writing */
 static bool write_error;
@@ -231,49 +222,24 @@ void replay_finish_event(void)
     replay_fetch_data_kind();
 }
 
-static __thread bool replay_locked;
-
 void replay_mutex_init(void)
 {
-    qemu_mutex_init(&lock);
-    qemu_cond_init(&mutex_cond);
-    /* Hold the mutex while we start-up */
-    replay_locked = true;
-    ++mutex_tail;
+    execution_order_init();
 }
 
 bool replay_mutex_locked(void)
 {
-    return replay_locked;
+    return execution_order_locked();
 }
 
-/* Ordering constraints, replay_lock must be taken before BQL */
 void replay_mutex_lock(void)
 {
-    if (replay_mode != REPLAY_MODE_NONE) {
-        unsigned long id;
-        g_assert(!bql_locked());
-        g_assert(!replay_mutex_locked());
-        qemu_mutex_lock(&lock);
-        id = mutex_tail++;
-        while (id != mutex_head) {
-            qemu_cond_wait(&mutex_cond, &lock);
-        }
-        replay_locked = true;
-        qemu_mutex_unlock(&lock);
-    }
+    execution_order_lock();
 }
 
 void replay_mutex_unlock(void)
 {
-    if (replay_mode != REPLAY_MODE_NONE) {
-        g_assert(replay_mutex_locked());
-        qemu_mutex_lock(&lock);
-        ++mutex_head;
-        replay_locked = false;
-        qemu_cond_broadcast(&mutex_cond);
-        qemu_mutex_unlock(&lock);
-    }
+    execution_order_unlock();
 }
 
 void replay_advance_current_icount(uint64_t current_icount)
